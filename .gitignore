@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.pyc
+
+# Local connection exports (do not commit hosts/credentials to public remotes)
+pgConnect.json
+.env
+.env.*

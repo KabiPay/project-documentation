@@ -1,0 +1,54 @@
+Category,Feature / capability,KabiPay UI,Database (kabipay-database),Keka benchmark (indicative),Notes for client
+Meta,Status legend,See FEATURES.md,,,"Implemented = wired; Partial = subset/mock; Gap = not shipped; DB = tenant schema domain"
+Auth & access,Login & JWT to GraphQL,Implemented,0005 auth_rbac,SSO / OTP (higher plans),KabiPay: REST auth + tenant header; enterprise SSO is roadmap-style vs Keka add-ons
+Auth & access,Admin vs employee areas,Implemented,0005 auth_rbac,Role-based access,Sidebar and routes reflect role
+Dashboard,Home dashboard (widgets),Implemented,Multiple,"Leadership / persona dashboards",KabiPay composes punch leave holidays notifications
+Dashboard,Punch in / out with optional GPS,Implemented,0010 time + 0032 punch policy,Selfie / geo-fence (Keka tiers),KabiPay: real browser geolocation; no selfie or fencing in UI
+Dashboard,Leave balance snapshot,Implemented,0011 leave,Time-off policies,Current year balances via GraphQL
+Dashboard,On leave today,Partial,0011 leave,Team calendar,KabiPay shows employee IDs not names
+Dashboard,Upcoming holidays,Implemented,0010/0028,Holiday calendars,GraphQL upcoming holidays
+Dashboard,Notifications preview,Implemented,0027+notifications path,Polls and announcements,Links to full notifications
+Attendance,Shifts and attendance history,Implemented,0010 time_shift_roster,Biometric + 200+ devices (Keka story),KabiPay: shifts + attendance list; no device integration in FEATURES
+Attendance,Timesheet entries + add,Implemented,0010,PSA timesheets (Keka separate product),Project code + hours path in UI
+Attendance,Correction request workflow,Not in UI (component exists),0010+0025 workflow,Manager corrections,KabiPay: modal not wired to Attendance page
+Leave,Board and apply leave,Implemented,0011 leave,Advanced time off (Keka),KabiPay: no cancel-pending in UI
+Leave,Cancel pending request,Not in UI,0011,Standard in HR suites,Gap called out in FEATURES
+Payroll,Payslips overview and cycles,Implemented,0012 payroll,Flexible pay schedules,GraphQL driven
+Payroll,Pay & tax pages (payslips + tax),Implemented,0012+0013 tax_statutory,US/global payroll (Keka varies by region),India TDS/PF/ESI emphasis in your stack
+Payroll,India TDS + PF/ESI CSV export,Stub / permission-aware,0013,Compliance exports,KabiPay UI notes stub nature where applicable
+Payroll,Regime compare / tax tips UX,Not in UI,0013+0031 tax_proof,Investment proofs / tax (Keka depth),Data may exist; dedicated UX not in FEATURES
+Payroll,Tax investment proofs,Not in UI (verify services),0031 tax_proof,Proof submission flows,Kabipay-database: domain 0031; confirm end-to-end in svc + UI
+Expenses,Submit and list expenses + approver actions,Implemented,0015 expense,Expense + cards,KabiPay: reject via prompt where applicable
+Expenses,Receipt or file upload on submit,Not in live path,0015+0029 file_storage,Receipt capture,KabiPay: amount/date/category; file storage in schema
+Travel,Travel requests + approvals,Implemented,0033 travel_request,Travel policies,Keka: travel often bundled; you have domain + route
+Notifications,Feed read/unread and announcements,Implemented,0027+communication,In-app + email (Keka),actionUrl supported per FEATURES
+Profile,Employee profile / settings,Partial,0007+0008,Interactive employee profile,Docs tab mock; not full live employee GraphQL for me
+Profile,My documents (upload/list),Partial / mock on profile,0008+0029,Document vault,KabiPay: use org routes for real lists per FEATURES
+Organization,Directory org chart documents detail,Implemented,0006+0007+0008,CoreHR data hub,GraphQL per FEATURES
+Workplace,Benefits,Implemented,0014 benefits,Easy benefits (Keka),List/detail pattern
+Workplace,Recruitment,Implemented,0016 recruitment,"ATS, AI JD, scorecards (Keka)",Depth varies vs Keka hiring suite
+Workplace,Onboarding,Implemented,0017 onboarding_offboarding,Onboarding+ pre-boarding (Keka tiers),Checklist style in FEATURES
+Workplace,Performance,Implemented,0018 performance,"Goals OKRs 1:1s PIP (Keka)",Your DB has performance; Keka advertises more PM depth
+Workplace,Learning (LMS),Implemented,0019 lms,Inbuilt LMS (Keka),Skills/courses in UI per FEATURES
+Workplace,Assets,Implemented,0022 assets,Asset register,KabiPay page present
+Workplace,Grievance,Implemented,0023 grievance,Helpdesk (Keka cross HR/IT),Different positioning: case vs helpdesk
+Admin,Employee CRUD,Implemented,0007 employee core,Core HR,Create/update modals
+Admin,Attendance / punch policy,Implemented,0032 attendance_punch_policy,Advanced shift scheduler,Admin page implemented
+Admin,Cross-module reports,Partial,0024 analytics,Custom report builder (Keka Growth+),Client-side filters; no department slice; no PDF in FEATURES
+Admin,Tenant / directory settings snapshot,Partial,0006+0007,Full settings product,Directory snapshot not full admin settings
+Admin,Module health probe,Present URL only not in nav,All subgraphs via gateway,Ops health,KabiPay: manual URL; add sidebar for ops users
+Admin,Bulk employee CSV import,Not implemented,0007+import flows,Bulk import common,Not found in UI per FEATURES
+Platform,Custom fields,Not in UI (typical),0009 custom_fields,Custom fields in suites,Schema ready; product surfacing TBD
+Platform,Workflow engine,Partial / behind modules,0025 workflow,Cross-module workflows (Keka story),KabiPay: attendance correction etc. not all wired
+Platform,Integrations and connectors,Not full UI,0026+0005 catalog,Slack/Teams API webhooks (Keka),DB + catalog; product UX TBD
+Platform,Analytics warehouse / events,0024+0030,0024+0030 outbox,Predictive / DEI (Keka marketing),KabiPay admin reports are lighter than full BI
+Platform,Communication audit,Backend-oriented,0027 communication_audit,Audit trails,May surface as compliance feature
+Platform,File storage,Partial use,0029 file_storage,Document + receipts,Drives future uploads across modules
+Platform,Succession planning,No dedicated route in FEATURES,0020 succession,Talent pools (Keka),DB domain present; not in workplace table of FEATURES
+Platform,Compensation planning (non-run-rate),Not dedicated UI,0021 compensation,Comp plans bonuses (Keka),Beyond payslip; verify product scope
+Engagement (gap vs Keka),Pulse surveys / social recognition,Not in FEATURES as suite,N/A (future),Praise badges social wall (Keka),Keka: strong EX layer; you: notifications/announcements
+Hiring depth (Keka),Referrals internal board BGV,Varies in product,0016+integrations,Pro hiring features,Map recruitment roadmap vs Keka hire suite
+Time advanced (Keka),Selfie clock geo-fence distance,Not in UI,0010+0032 possible hooks,Keka strength tiers,KabiPay: GPS optional only per FEATURES
+PSA (Keka product line),Projects billing client portal,Not HRMS focus,N/A,PSA cloud (Keka),KabiPay: timesheet exists; full PSA is separate product decision
+Access (Keka),Native mobile app OTP auth,Web app,0005,Mobile-first ESS,KabiPay: position web + roadmap mobile/OTP/SSO
+Self-service,Employee portal breadth,Partial–Implemented mix,0005–0008,Single login ESS,Keka: payslip leave tax on mobile; you align on web
