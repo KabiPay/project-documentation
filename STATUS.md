@@ -3,7 +3,7 @@
 > **Single source of truth for what is done and what is pending.**
 > Update this file at the end of every work session so any contributor (or any future agent session) can resume in one read.
 
-- Last updated: 2026-04-28 (**Session:** **M34** — **Tenant Liquibase `0033-002`** adds **`travel_request.rejected_by`** (demo schema migrated). **`kabipay-analytics`**: integrations + webhook + audit GraphQL (**HR / directory RBAC**). **`kabipay-benefits`**: **`myBenefitEnrollments`**, **`enrollInBenefitPlan`**. **`kabipay-ui`**: **`clientOperations.graphql`** extended + **`npm run codegen`**. **Still:** payroll production / NACH / Form 16, connector **credentials**/vendor delivery, workflow **visual** designer — §0.2 / §12.)
+- Last updated: 2026-04-28 (**Session:** **M35** — **e2e polish** from **§11.1 / §13** gaps: **Benefits** “My enrollments” shows **plan name** + benefit **type** label; **Expenses & Travel** table adds **Decision** column (**`approvedBy`** / **`rejectedBy`** + rejection reason). **`npm run build`** ✅. **Still:** payroll production / NACH / Form 16, connector **secrets** + outbound **dispatcher**, workflow **canvas** — §0.2.)
 - Phase in flight: **Phase 3 — authenticated client plane (JWT) + read/write GraphQL; optional migration to generated hooks**
 - **Handoff (other context window):** Work continues in a fresh session. See **§0.1** and **§12** for the **one-module-at-a-time** queue.
 
@@ -11,11 +11,11 @@
 
 | Status | Theme |
 |--------|--------|
-| **Done** | **M1**–**M13** (see §12); **M28** S3/R2 `s3_compat` **object_store**; **M29** payroll pay run v1 + arrears + workflow read UI + **codegen** extension fix; **M30** expense ↔ travel link in **UI** + queries; **M31** workflow **definition** write; **M32** expense **multi-step** **`workflow_instance`**; **M33** expense **outbox** on final approve; **M34** integrations/audit/webhook **GraphQL** + benefits **enroll** + travel **`rejected_by`** + **codegen**; **M10** lists: **`expenses`**, **`attendance`**, **`timesheetEntries`**, **`payslips`** / **`payslip`**, **`employeeDocuments`** (explicit **`employeeId`**), **`leaveBalances`** — all use **`kabipay_common::client_data_scope`** + JWT **`resource_scopes`**; demo seed adds **`permission_scope`** for **`expense`/`approve`** + **`attendance`/`read`** (**ALL** for **HR_ADMIN**). **M11:** **`attendance_punch_policy`** + **`punchToday`** enforcement + **`attendancePunchPolicy`** / **`upsertAttendancePunchPolicy`**. **M14–M24** per §12 (incl. **Insights**, **onboarding+exit** submit, **document `mime` in signed URL**). **M24.1** separation **HR approve/reject** (GraphQL + UI for **`admin`** role). |
+| **Done** | **M1**–**M13** (see §12); **M28** S3/R2 `s3_compat` **object_store**; **M29** payroll pay run v1 + arrears + workflow read UI + **codegen** extension fix; **M30** expense ↔ travel link in **UI** + queries; **M31** workflow **definition** write; **M32** expense **multi-step** **`workflow_instance`**; **M33** expense **outbox** on final approve; **M34** integrations/audit/webhook **GraphQL** + benefits **enroll** + travel **`rejected_by`** + **codegen**; **M34/M35** Workplace **Benefits** + Insights **integrations/audit** + **M35** travel decision column / enrollment labels; **M10** lists: **`expenses`**, **`attendance`**, **`timesheetEntries`**, **`payslips`** / **`payslip`**, **`employeeDocuments`** (explicit **`employeeId`**), **`leaveBalances`** — all use **`kabipay_common::client_data_scope`** + JWT **`resource_scopes`**; demo seed adds **`permission_scope`** for **`expense`/`approve`** + **`attendance`/`read`** (**ALL** for **HR_ADMIN**). **M11:** **`attendance_punch_policy`** + **`punchToday`** enforcement + **`attendancePunchPolicy`** / **`upsertAttendancePunchPolicy`**. **M14–M24** per §12 (incl. **Insights**, **onboarding+exit** submit, **document `mime` in signed URL**). **M24.1** separation **HR approve/reject** (GraphQL + UI for **`admin`** role). |
 | **In progress** | — |
 | **Not started (high level)** | See **§0.2** — production **payroll** exports, **workflow** drag-and-drop **designer** (beyond **M31** form-based write), **expense** multi-step; optional **Azure Blob** behind **`object_store`**. |
 
-**Suggested next work:** **§0.2** ⬜ rows — **payroll** production depth (NACH/Form 16/24Q); **integrations** connector **secrets** storage + outbound **worker** behaviour; **workflow** visual editor; **benefits enroll** UI next to Workplace read. **§10.1** Keka parity (1)–(5). **§12:** **M34** lands HR **integrations/audit/webhook** + **benefits enroll** API + **`travel_request.rejected_by`**; remaining **§0.2** ⬜ lines above, then §11.1 where **UI** is still shallow.
+**Suggested next work:** **§0.2** ⬜ — **payroll** compliance (**NACH** / Form 16 / statutory filed layouts); **integrations** outbound **worker** (**per-tenant webhook** delivery) + encrypted **credentials**; **workflow** **canvas** (reorder/delete **steps**). **§10.1** parity items (1)–(5). **§11.1** remaining **🟨** rows: payroll artefacts, attendance **calendar** UX, shallow operator/tenant portals.
 
 ### 0.2 Follow-up backlog — completed vs pending (product)
 
@@ -98,7 +98,7 @@ D:\work\KabiPay\
 | `kabipay-auth` (REST) | `KABIPAY_AUTH_PORT` (default **4001** in `main.rs` if env unset) | ✅ | Client + ops **login / refresh / logout**, Argon2id, shared JWT, refresh in `user_session` / `operator_session`. Client access tokens include **`employee_id`** when the user is linked to `employee.user_id`. **UI:** `kabipay-ui/public/config.json` `authUrl` must match. |
 | 20 federated subgraphs | http://127.0.0.1:**4010-4029**/graphql | ✅ | Reads + **writes** where implemented (incl. **analytics** read APIs on **4029**). |
 | Stitching gateway (`kabipay-gateway`) | http://127.0.0.1:4009/graphql | ✅ | Forwards **`Authorization`**, **`x-tenant-id`**, and (when present) **`x-forwarded-for`** / **`x-real-ip`** to subgraphs. |
-| UI (`kabipay-ui`) | http://localhost:5173 | 🟨 | **Auth** can call real `/auth/*`; many module screens use **live gateway queries**; buttons that need new mutations can be enabled as queries/codegen catch up. |
+| UI (`kabipay-ui`) | http://localhost:5173 | ✅ | **Auth** `/auth/*`; **Workplace → Benefits** enroll + **Insights → Integrations & audit** (**HR**) via codegen; **`npm run build`** green (**2026-04-28**). Remaining screens → **§7.8**. |
 
 ### Smoke test — confirmed
 
@@ -400,10 +400,11 @@ Smoke test: run `npm run dev` in `kabipay-gateway/` + `kabipay-ui/`, then open `
 
 - `resolve_tenant_db` / cache use **`tenant_database`** rows; host rewrite for Docker vs host; derived schema kept as fallback.
 
-### 7.8 UI integration 🟨 PARTIAL (mutations done inline; polish remains)
+### 7.8 UI integration 🟨 PARTIAL (core flows + codegen; inline `gql` remains)
 
-- Auth + many screens: **live reads**; **core mutations** are wired with **inline `gql`** (expense submit, notifications, leave apply, timesheet, punch, payslips, tax upsert, org docs) — see §0.1.
-- **Pending:** optional migration to **generated** `graphql()` hooks from `src/api/graphql/`. **`npm run lint`** and **`npm run build`** are green; **`npm run codegen`** re-run when the schema changes.
+- Auth + many screens: **live reads**; **core mutations** mix **inline `gql`** and **generated** documents (**§0.1**).
+- **2026-04-28:** **Benefits:** **`WorkplaceBenefits`** + **`MyBenefitEnrollments`**, **`EnrollInBenefitPlan`**. **Insights:** tab **Integrations & audit** — catalogue connect, webhooks, audit preview (**HR / directory** RBAC, same family as outbox).
+- **Pending:** migrate more routes to **`graphql`** hooks only if desired; **`npm run codegen`** when the gateway schema changes.
 
 ### 7.9 GraphQL write + read APIs (batch, 2026-04-24) ✅
 
@@ -582,21 +583,21 @@ The five roadmap bullets under §10 are **parity targets** aligned with [Keka](h
 | 11 | Leave | ✅ | ✅ submit/approve | ✅ | **Workflow** engine, policies |
 | 12 | Payroll | ✅ | **M29** pay run v1 + arrears + **M4**/**M12** CSV stubs; bank CSV query | 🟨 | Production filing formats, NACH/bank **upload** templates, Form 16 / 24Q |
 | 13 | Tax & statutory | ✅ | ✅ proofs/computations | 🟨 | Filed statutory artefacts |
-| 14 | Benefits | ✅ | read-heavy | ⬜ | Enrollment flows |
-| 15 | Expense | ✅ | ✅ submit/approve | ✅ | **Trip**, mileage, multi-level |
-| 16 | Recruitment (ATS) | ✅ | read-heavy | ⬜ | Pipeline, offers |
+| 14 | Benefits | ✅ | **`enrollInBenefitPlan`** (**M34**) | ✅ | **Workplace**: catalog + enroll + labeled enrollments (**M35**) |
+| 15 | Expense | ✅ | ✅ submit/approve + **travel_request** (**M34**/`rejected_by`) | ✅ | **M30/M32/M35**; per-diem / mileage product TBD |
+| 16 | Recruitment (ATS) | ✅ | read-heavy | ✅ | **M17** jobs + apps list; ATS pipeline/offers TBD |
 | 17 | Onboarding / offboarding | ✅ | ✅ checklist + **separation** + **HR approve/reject** + **FNF** + **clearance** | ✅ | **M24**–**M25**; payroll pay-run still N/A at FNF |
-| 18 | Performance | ✅ | read-heavy | ⬜ | 360, calibrations |
-| 19 | LMS | ✅ | read-heavy | ⬜ | |
+| 18 | Performance | ✅ | read-heavy | ✅ | **M19** read v1 (**Workplace**); 360 deferred |
+| 19 | LMS | ✅ | read-heavy | ✅ | **M20** (**Workplace**); paths/certs deferred |
 | 20 | Succession | ✅ | read-heavy | ✅ | **M23** |
 | 21 | Compensation | ✅ | read-heavy | ✅ | **M23** |
-| 22 | Assets | ✅ | read-heavy | ⬜ | Handoff at exit |
-| 23 | Grievance | ✅ | read-heavy | ⬜ | |
+| 22 | Assets | ✅ | read-heavy | ✅ | **M21** read v1 (**Workplace**) |
+| 23 | Grievance | ✅ | read-heavy | ✅ | **M22** submit + list (**Workplace**) |
 | 24 | Analytics / reporting | ✅ | ✅ + outbox (HR) | ✅ | **M24** |
 | 25 | Workflow engine | ✅ | **M8** leave; **M32** expense (**`kabipay-expense`**); **M29** read; **M31** definition **write** (**`kabipay-workflow`**) | 🟨 | **Workplace → Workflows** + **Admin** + **Expenses** ✅. **D:** visual **designer**. |
-| 26 | Integrations & webhooks | ✅ | ⬜ | ⬜ | |
+| 26 | Integrations & webhooks | ✅ | **M34** **`kabipay-analytics`** + connect/webhook mutations | 🟨 | **Insights** tab (**HR**) — outbound **delivery** still worker/TBD |
 | 27 | Communication & platform | ✅ | 🟨 notifications | 🟨 | Push/email |
-| 28 | Audit & security | ✅ | ⬜ | ⬜ | |
+| 28 | Audit & security | ✅ | **M34** **`auditLogs`** (**analytics**) | 🟨 | **Insights** tab preview (**HR**); SIEM/export TBD |
 | 29 | Master data + file storage | ✅ | ✅ **M5** + **M28** LOCAL or **`s3_compat`** | 🟨 | Deeper: lifecycle / retention policies |
 | 30 | Outbox events | ✅ | **M6** + **M7** + **M26** + **M33** expense (**`expense.approved`**) | **M7** worker | **G:** other transitions |
 
@@ -623,7 +624,7 @@ Work through this list **in order** unless a security incident reprioritises. Af
 | **M13** | **Core HR — org chart + lifecycle** | ✅ **v1** (2026-04-24) | **`orgChart`**, **`reportingManagerId`**, admin UI — plus **`onboardingChecklist`** / **`setOnboardingChecklistItemCompleted`** on **`kabipay-employee`** and **Workplace → Onboarding** UI. **Offboarding** (separation/FNF) still DB-only until a dedicated slice. |
 | **M14** | **Expense / travel vertical** | ✅ **done** (2026-04-24) | Liquibase **0033** **`travel_request`** + **M34** **`0033-002`** **`rejected_by`**; **`kabipay-expense`**: **`travelRequests`**, **`submitTravelRequest`**, **`approveTravelRequest`**, **`rejectTravelRequest`** (same approver RBAC as expenses; reject stores **`rejected_by`**); **Expenses** page lists requests + modal submits real rows. |
 | **M15** | **Client UI — attendance & shifts** | ✅ **done** (2026-04-24) | **Admin → Attendance policy**: **`attendancePunchPolicy`**, **`upsertAttendancePunchPolicy`**, read-only **`shifts`** list. |
-| **M16** | **Client UI — benefits** | ✅ **read + enroll API** (2026-04-24; **M34**) | **Workplace → Benefits**: **`benefitTypes`** + **`benefitPlans`**; **`myBenefitEnrollments`**, **`enrollInBenefitPlan`** in subgraph + **`clientOperations.graphql`** (**UI** tab can wire **`EnrollInBenefitPlan`** when desired). |
+| **M16** | **Client UI — benefits** | ✅ **read + enroll API + UI** (2026-04-24; **M34**; **UI follow-up** Apr 28) | **Workplace → Benefits**: types + plans; **My enrollments** list + **Enroll** per active plan; codegen documents. |
 | **M17** | **Client UI — recruitment (ATS)** | ✅ **read v1** (2026-04-24) | **Workplace → Recruitment**: **`jobPostings`** + **`applications`**; external **apply** stub deferred. |
 | **M18** | **Client UI — onboarding / offboarding** | ✅ **onboarding v1** (2026-04-24) | Checklist query + self-service completion; HR may toggle items for employees in scope (same rule as documents). |
 | **M19** | **Client UI — performance** | ✅ **read v1** (2026-04-24) | **Workplace → Performance**: **`reviewCycles`** + **`goals`**. |
@@ -643,6 +644,7 @@ Work through this list **in order** unless a security incident reprioritises. Af
 | **M32** | **Expense `workflow_instance` (runtime)** | ✅ **done** (2026-04-27) | **`kabipay-expense`** + seed + **`Expenses`** UI; **codegen:** **`backlog-catchup`** no longer stubs **`Expense`** / **`SubmitExpenseInput`** (**gateway** subgraph is authoritative). |
 | **M33** | **Outbox on final expense approve (Gap G)** | ✅ **done** (2026-04-27) | **`finalize_expense_approval`**: inserts **`outbox_event`** **`aggregate_type`** **`expense`**, **`event_type`** **`expense.approved`**, same txn as status **APPROVED** ( **`kabipay-outbox-worker`** consumes). |
 | **M34** | **Integrations / audit GraphQL + benefits enroll + travel rejector column** | ✅ **done** (2026-04-28) | **`kabipay-analytics`**: catalogue + **`tenant_integration`** list + **`webhook_subscription`** + **`audit_log`** reads; **`connectTenantIntegration`**, **`registerWebhookSubscription`**, **`setWebhookSubscriptionActive`**. **`kabipay-benefits`**: **`MutationRoot`**; **`kabipay-expense`** + tenant **`0033-002`** **`rejected_by`**. **`kabipay-ui`**: codegen ops (**§0.2** GraphQL row). |
+| **M35** | **§11.1 e2e polish — benefits + travel UI** | ✅ **done** (2026-04-28) | **Benefits:** enrollment rows show **plan name** + benefit **type**. **Expenses:** travel table **Decision** column surfaces **`approvedBy`** / **`rejectedBy`** + **`rejectionReason`**. **§11.1** rows **14–16**, **18–20**, **22–23** aligned with shipped **Workplace** pages. |
 
 **Rules:** one **M#** per development session where possible; **M7–M24.1** may be reprioritised after security review. Update **§11.1** when a domain’s **UI e2e** or **API** column materially changes. **§13** is the cross-check against **`hrms_erd_complete.md`** so “DB exists but no UI” is explicit.
 
@@ -664,7 +666,7 @@ Work through this list **in order** unless a security incident reprioritises. Af
 | 10 | Time, shift, roster | ✅ | ✅ + **M11** | ✅ | **M15** HR policy UI + shift list (read-only in client). |
 | 11–12 | Leave, payroll | ✅ | ✅; **M29** pay run + arrears | 🟨 | Leave ✅; payroll **M29** v1; filed statutory / NACH TBD. |
 | 13 | Tax & statutory | ✅ | ✅ | 🟨 | Tax proof flows; filed artefacts still out of scope. |
-| 14 | Benefits | ✅ | read-heavy | ✅ | **M16** catalog page; enroll mutation deferred. |
+| 14 | Benefits | ✅ | **`myBenefitEnrollments`** / **`enrollInBenefitPlan`** (**M34**) | ✅ | **Workplace** (**M35** labels on enrollments). |
 | 15 | Expense | ✅ | ✅ + **travel_request**; **M32** **`workflow_instance`** | ✅ | **M30** trip link; **M32** multi-step approval. |
 | 16 | Recruitment | ✅ | read-heavy | ✅ | **M17** jobs + applications table. |
 | 17 | Onboarding / offboarding | ✅ | ✅ checklist | ✅ | **M18**; separation/FNF still API-light. |
@@ -674,11 +676,11 @@ Work through this list **in order** unless a security incident reprioritises. Af
 | 21 | Compensation | ✅ | read-heavy | ✅ | **M23** review cycles + salary bands (read v1). |
 | 22 | Assets | ✅ | read-heavy | ✅ | **M21** inventory read v1. |
 | 23 | Grievance | ✅ | ✅ read + submit | ✅ | **M22** scoped list + **`submitGrievanceCase`**. |
-| 24 | Analytics | ✅ | ✅ `kabipay-analytics` | ✅ | **M24** Insights + outbox queue tab |
+| 24 | Analytics | ✅ | ✅ `kabipay-analytics` + **M34** integrations/audit (**HR**) | ✅ | Insights + outbox + **integrations & audit** tab |
 | 25 | Workflow | ✅ | **M8** leave; **M32** expense runtime; **M29** read; **M31** definition mutations | 🟨 | **Workflows** + **Admin** + **Expense** claims ✅; drag-and-drop ⬜. |
-| 26 | Integrations | ✅ | ⬜ | ⬜ | Webhook registry UI + mutations. |
+| 26 | Integrations | ✅ | **M34** webhooks + tenant connect (**analytics**) | 🟨 | **Insights → Integrations & audit** (**HR**) — dispatcher product TBD |
 | 27 | Communication | ✅ | 🟨 notifications | 🟨 | Push/email providers. |
-| 28 | Audit & security | ✅ | ⬜ | ⬜ | Audit log viewer (ops or tenant admin). |
+| 28 | Audit & security | ✅ | **M34** `auditLogs` (**analytics**) | 🟨 | **Insights** preview (**HR**); export/SIEM TBD |
 | 29 | Master data + files | ✅ | 🟨 **M5** | 🟨 | **S3** provider; master data CRUD UI. |
 | 30 | Outbox | ✅ | **M6/M7** + **M26** | 🟨 Insights outbox + **Requeue** | **HR** queue inspection; more publishers TBD. |
 
