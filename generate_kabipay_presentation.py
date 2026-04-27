@@ -1,7 +1,8 @@
 """
 Generate PowerPoint from kabipay-feature-matrix.csv.
-Lives under kabipay-ui/project-documentation/ (client & stakeholder materials).
-Requires: pip install python-pptx
+
+Canonical location: https://github.com/KabiPay/project-documentation
+(requires: pip install python-pptx)
 """
 from __future__ import annotations
 
@@ -59,7 +60,10 @@ def add_title_slide(prs: Presentation) -> None:
     p2.font.name = "Calibri"
     p2.space_before = Pt(8)
     p3 = tf.add_paragraph()
-    p3.text = f"Data source: kabipay-ui FEATURES.md + kabipay-database (Liquibase). Folder: project-documentation. CSV: {CSV_PATH.name}"
+    p3.text = (
+        f"Data: kabipay-ui FEATURES.md + kabipay-database. "
+        f"Repo: KabiPay/project-documentation. CSV: {CSV_PATH.name}"
+    )
     p3.font.size = Pt(12)
     p3.font.italic = True
     p3.font.color.rgb = RGBColor(0x50, 0x50, 0x50)
