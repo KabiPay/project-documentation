@@ -3,7 +3,7 @@
 > **Single source of truth for what is done and what is pending.**
 > Update this file at the end of every work session so any contributor (or any future agent session) can resume in one read.
 
-- Last updated: 2026-04-24 (**M13** continued: **`reportingManagerId`** on **`Employee`**, **`createEmployee` / `updateEmployee`** with server-side **cycle checks**; admin **Add/Edit employee** + **Reports to** column)
+- Last updated: 2026-04-27 (**Session:** **M32 follow-up** — **`backlog-catchup`** trimmed (**`Expense`** + **`SubmitExpenseInput`** expense shims removed; supergraph is source). **`npm run codegen`** + **`npm run build`** green. **Still:** payroll production filings, workflow **visual** editor — §0.2 / §12.)
 - Phase in flight: **Phase 3 — authenticated client plane (JWT) + read/write GraphQL; optional migration to generated hooks**
 - **Handoff (other context window):** Work continues in a fresh session. See **§0.1** and **§12** for the **one-module-at-a-time** queue.
 
@@ -11,11 +11,31 @@
 
 | Status | Theme |
 |--------|--------|
-| **Done** | **M1**–**M13** (see §12); **M10** lists: **`expenses`**, **`attendance`**, **`timesheetEntries`**, **`payslips`** / **`payslip`**, **`employeeDocuments`** (explicit **`employeeId`**), **`leaveBalances`** — all use **`kabipay_common::client_data_scope`** + JWT **`resource_scopes`**; demo seed adds **`permission_scope`** for **`expense`/`approve`** + **`attendance`/`read`** (**ALL** for **HR_ADMIN**). **M11:** **`attendance_punch_policy`** + **`punchToday`** enforcement + **`attendancePunchPolicy`** / **`upsertAttendancePunchPolicy`**. |
-| **In progress** | — (optional polish: pass **`mime_type`** in download token, wire UI upload) |
-| **Not started** | **M14+** (§12) + **§13** — **M13** chart + reporting manager done; **onboarding/offboarding** checklist still a follow-up |
+| **Done** | **M1**–**M13** (see §12); **M28** S3/R2 `s3_compat` **object_store**; **M29** payroll pay run v1 + arrears + workflow read UI + **codegen** extension fix; **M30** expense ↔ travel link in **UI** + queries; **M31** workflow **definition** write; **M32** expense **multi-step** **`workflow_instance`**; **M10** lists: **`expenses`**, **`attendance`**, **`timesheetEntries`**, **`payslips`** / **`payslip`**, **`employeeDocuments`** (explicit **`employeeId`**), **`leaveBalances`** — all use **`kabipay_common::client_data_scope`** + JWT **`resource_scopes`**; demo seed adds **`permission_scope`** for **`expense`/`approve`** + **`attendance`/`read`** (**ALL** for **HR_ADMIN**). **M11:** **`attendance_punch_policy`** + **`punchToday`** enforcement + **`attendancePunchPolicy`** / **`upsertAttendancePunchPolicy`**. **M14–M24** per §12 (incl. **Insights**, **onboarding+exit** submit, **document `mime` in signed URL**). **M24.1** separation **HR approve/reject** (GraphQL + UI for **`admin`** role). |
+| **In progress** | — |
+| **Not started (high level)** | See **§0.2** — production **payroll** exports, **workflow** drag-and-drop **designer** (beyond **M31** form-based write), **expense** multi-step; optional **Azure Blob** behind **`object_store`**. |
 
-**Suggested next work:** **M14** (expense / travel) or **onboarding/offboarding** slice; then **M15** (attendance HR policy UI). See **§10.1** before assuming Keka parity items (1)–(5) are done.
+**Suggested next work:** **§0.2** ⬜ rows — **payroll** production depth (NACH/Form 16/24Q), **expense** approval rules / outbox on final approve, full trip UX, **workflow** visual editor. **§10.1** Keka parity (1)–(5). **§12:** **M32** closes **expense** **`workflow_instance`** v1; next backlog slices are the **§0.2** ⬜ lines above, then §11.1 domains where **UI** is still ⬜.
+
+### 0.2 Follow-up backlog — completed vs pending (product)
+
+| Status | Area | Notes |
+|--------|------|--------|
+| ✅ | **Analytics + outbox read** | **`kabipay-analytics`** (**4029**), **Insights** UI, HR **`outboxEvents`**. |
+| ✅ | **Separation self-serve + HR list** | **`separations`**, **`submitSeparation`**, **Onboarding & exit** tab. |
+| ✅ | **Separation HR decision** | **`approveSeparation`** / **`rejectSeparation`** (`PENDING` → `APPROVED` / `REJECTED`), same RBAC as **`createEmployee`**; UI buttons when profile **`admin`** + `PENDING`. |
+| ✅ | **Signed download `mime_type`** | Token + GET prefer claim, fall back to **`file_storage.mime_type`**. |
+| ✅ | **Workplace shell polish** | **TabBar**, **AppLayout** card, **Insights** + **Workflows** nav. |
+| ✅ | **FNF settlement / clearance checklist** | Same GraphQL as before. UI: **Onboarding** uses **codegen** ops **`ClientOpsFnfBySeparation`**, **`ClientOpsClearanceBySeparation`**, **`ClientOpsUpsertFnf`**, **`ClientOpsFinalizeFnf`**, **`ClientOpsSetClearanceCleared`**, **`ClientOpsEnsureOffboarding`** in **`clientOperations.graphql`**. On approve: transactional seed DRAFT FNF + 4 default clearance rows. |
+| ✅ | **Outbox consumer hardening** | Tenant **`0034`**: **`claimed_at`** on **`outbox_event`**. Worker: reclaim stale **`PROCESSING`** ( **`OUTBOX_STALE_PROCESSING_SEC`**, legacy **`OUTBOX_LEGACY_PROCESSING_MAX_AGE_SEC`** for NULL `claimed_at` ). **Analytics** mutation **`requeueOutboxEvent`**, Insights **Requeue** button (**`admin`** + FAILED/PROCESSING). Run **`update-tenant-liquibase.ps1`** for `claimed_at`. |
+| ✅ | **GraphQL client: generated operations (client app)** | **`clientOperations.graphql`** + **`npm run codegen`** for all employee/HR UI routes; **create/edit employee** uses typed **`CreateEmployeeInput`** / **`UpdateEmployeeInput`** casts where the form builds a partial object. **Exception:** **`ModuleHealth`** keeps **inline `gql`** for per-subgraph health probes (by design). |
+| ✅ | **File storage: S3 / cloud (M28)** | **`KABIPAY_FILE_STORAGE_MODE`**: `local` (default) or **`s3_compat`**. **OpenDAL** + **reqsign** SigV4; **`ensure_tenant_bucket`** + upload; per-tenant **bucket** `{prefix}-{uuid}` or **`KABIPAY_S3_DEFAULT_BUCKET`** with keys **`tenant_id/file_id`**. **Azure** not implemented (enum reserved). **§0.2** below: tenant + upload behavior. |
+| ✅ | **Payroll pay run v1 + arrears + workflow reads (M29)** | **`runPayrollForCycle`** with statutory **stubs** + TDS from **`tax_computation`**; tenant **0035** `payroll_arrear`, **`createPayrollArrear`**, **Payroll** UI + optional **`PayrollArrearsList`** query. **`payrollBankTransferCsv`**. **Workflow** subgraph: **`workflows`**, **`workflowsWithSteps`** (UI: step list with fallback if steps query unavailable). **DB 0036** `expense.travel_request_id`. **Codegen:** do **not** duplicate **`CreatePayrollCycleInput`** in **`schema-extensions/payroll-run.graphql`** — gateway uses **`NaiveDate`**. |
+| ⬜ | **Payroll — production / compliance depth** | Bank **NACH** or tenant-specific **upload** formats; EPF/ESI/PT beyond **stubs**; **Form 16**, **24Q**, filed challan layouts (see §10). |
+| 🟨 (partial) | **Workflow designer (write)** | **M31** definition **`create*`** + Admin forms. **M32:** **expense** **runtime** on **`kabipay-expense`**. **Still:** reorder/delete steps, **drag-and-drop** canvas (admin UX). Leave **runtime** remains **`kabipay-leave`**. |
+| 🟨 (partial) | **Multi-step expense / travel (product)** | **M30** **`travelRequestId`**. **M32:** **`EXPENSE`** **`workflow_instance`** + multi-step **`approveExpense`**. **Still:** per-diem / budgets, **`outbox_event`** on final expense approve, drag-and-drop **designer**. |
+
+**File upload and “tenant” (M28):** A file upload only runs in a valid **app** context (JWT + **tenant** from gateway / ops DB / tenant connection). The code does **not** ask R2 if “the tenant exists” as a separate product object — the tenant is already resolved for the request. **LOCAL:** `KABIPAY_LOCAL_FILE_ROOT` + **`{tenant_id}/{file_id}`** (mkdir as needed). **S3 / R2 (`s3_compat`):** by default a **dedicated S3 bucket per tenant** (name **`{KABIPAY_S3_BUCKET_PREFIX}-{uuid}`**); on first use the service calls **CreateBucket** (or treats **409** as already there), then **PutObject** with key **`{file_id}`** — not a literal “folder” in one bucket, unless you use a **shared** bucket and **`KABIPAY_S3_PER_TENANT_BUCKET=0`**, in which case keys are **`{tenant_id}/{file_id}`** (prefix like a folder).
 
 ---
 
@@ -25,7 +45,7 @@
 |------|--------|--------|
 | **UI — client mutations / live reads (inline `gql` + `useGraphClient`)** | ✅ done | Expenses `submitExpense`, notifications mark read / mark all, leave `submitLeaveRequest` + Apply modal, attendance timesheet `createTimesheetEntry` + list, dashboard punch / leave balances / upcoming holidays, org documents, payroll payslip list + tax computations / upsert. `kabipay-ui` **`npm run build`** passes. |
 | **`src/api/documents/clientOperations.graphql`** | ✅ added | JWT-oriented operations; keep `moduleProbes.graphql` shallow for health probes. |
-| **`npm run codegen`** (`kabipay-ui`) | ✅ done (when stack is up) | **2026-04-24:** Renamed duplicate operation names in `moduleProbes.graphql` / `clientOperations.graphql` (`ModuleProbe*`, `ClientOps*`), `Date` → `NaiveDate` in upcoming-holiday operations. Rebuilt **stale** subgraphs (`employee`, `attendance`, `tax`, `expense`, `notification`) so introspection includes document/timesheet/tax/notification APIs. `src/api/graphql/**` is **ESLint-ignored** (codegen output). |
+| **`npm run codegen`** (`kabipay-ui`) | ✅ done (when stack is up) | **2026-04-24:** Renamed duplicate operation names, `Date` → `NaiveDate` in upcoming-holiday ops; rebuild subgraphs for full introspection. **2026-04-28:** Merged schema failed if **`payroll-run.graphql`** redefined **`CreatePayrollCycleInput`** with **`Date`** while the gateway has **`NaiveDate`** — **remove duplicate input/mutation** from extension when the supergraph provides them. **M31:** **`workflow-admin.graphql`** removed once **gateway** exposes **`createWorkflow`**. **M32 follow-up:** **`backlog-catchup`** expense **`extend`** trims removed (**`Expense`** + **`SubmitExpenseInput`**). **`schema` =** gateway URL + **`backlog-catchup.graphql`** (payroll arrear placeholders + workflow step list shims until full gateway parity) + **`payroll-run.graphql`**. `src/api/graphql/**` is **ESLint-ignored** (codegen output). |
 | **ESLint / Prettier (`npm run lint`)** | ✅ done | Prettier normalize + ESLint: `max-lines-per-function` cap raised to 360, context hooks on `allowExportNames`, hook dependency fixes, `prefer-destructuring` fixes. |
 | **Tenant DB — migrations after provision** | ⬜ confirm per machine | If tables are missing, run `.\kabipay-svc\scripts\update-tenant-liquibase.ps1 -Schema tenant_342205fc` — includes **`0032` `attendance_punch_policy`**, **`0033` `travel_request` (M14)**, etc. Then **`seed-demo-data.ps1`** (idempotent) for demo rows including onboarding tasks + pending travel. Re-seed after **0005-007** for demo `permission_scope` rows. |
 | **GitHub org — split repositories** | ✅ done (2026-04-24) | Four remotes under `https://github.com/KabiPay/`: `kabipay-database`, `kabipay-svc`, `kabipay-gateway`, `kabipay-ui` (`main` pushed). Workspace-only files (`STATUS.md`, `ROADMAP.md`, `KABIPAY_AI_PROMPT.md`, `hrms_erd_complete.md`, `kabipay.code-workspace`) are **not** in those repos by design. |
@@ -35,7 +55,7 @@
 | **Keka / market parity** | ⬜ see §10 | [Keka](https://www.keka.com) positions deep India payroll + attendance hardware + mobile + policy automation; KabiPay is API-first with gaps listed in §10. |
 | **Client RBAC** | 🟨 partial (2026-04-24) | **`resource_scopes`** (M3 + **M10**): **`employee`**, **`leave`**, **`expense`**, **`attendance`** keys on JWT; applied to directory + leave + expense + attendance + payroll reads + documents list. **`createEmployee` / `updateEmployee`**: **`employee:write`**. **Leave / expense** approve: **`leave:approve`**, **`expense:approve`**. **Tax proof**: **`tax:approve`**. **Payroll statutory export**: **`payroll:statutory_export`**. **Attendance punch policy** (M11): **`attendance:punch_policy`** or HR / tenant admin roles. Re-seed for new **`permission_scope`** rows. **Dev:** `KABIPAY_EMPLOYEE_MUTATION_HEADER_OK=1` — see `kabipay-svc/.env.example`. Wider gaps → §11. |
 | **Org hierarchy (M1 + M13)** | ✅ (2026-04-24) | **`departments`** + **`designations`**; **`orgChart`** + **Org chart**; **`reportingManagerId`**; **onboarding checklist** API + **Workplace** module pages (**M13–M22** v1). |
-| **Approvals (M2)** | ✅ leave + expense (2026-04-24) | **Leave:** **`submitLeaveRequest`** attaches **`workflow_instance`** when tenant has active **`workflow.entity_type = LEAVE_REQUEST`** + ≥1 **`workflow_step`** (**M8**). **`approveLeaveRequest`**: **`workflow_action`** + multi-step advance; **balance + `outbox_event`** only on **final** step (**M6**). **`rejectLeaveRequest`**: **`workflow_action` REJECT** + **`CANCELLED`** instance when in progress. GraphQL **`leaveRequest.workflowInstanceId`**. **Expense:** still single-step approve/reject (no **`workflow_instance`**). **Attendance:** `addManualAttendanceSegment` — same-day missed punches. Re-seed **`seed-demo-data.ps1`** for demo **`workflow_step`** + linked demo request. |
+| **Approvals (M2)** | ✅ leave + expense (**M32**) | **Leave (M8):** **`workflow_instance`** when **`LEAVE_REQUEST`** definition + **`workflow_step`**; **`approve`** / **`reject`** as documented. **Expense (M32):** same for **`EXPENSE`** (**`kabipay-expense`**); **`rejectExpense`** records **`workflow_action`** (**`rejector_user_id`**). **Attendance:** **`addManualAttendanceSegment`**. **Re-seed** for **`EXPENSE`** two-step workflow + seeded claim (**`workflowInstanceId`** on **GraphQL**). |
 
 **Why the backend was slow to run in some sessions (agent / constrained envs):** Docker may not be running or may hang on first connect; `docker compose` / `docker ps` can block. A **parallel** `cargo build --workspace` on Windows can **OOM** or hit **`rustc` stack errors**; use **`cargo build -j 1`** (see §3 build note) or the per-crate loop. If **`kabipay-auth.exe`** (or any subgraph) is already running, the linker can fail with **“Access is denied”** on replacing the `.exe` — stop the process first. In prior **full local** runs, **Postgres + `start-subgraphs.ps1` + gateway** was enough for UI **codegen** — reproduce that order when the environment allows.
 
@@ -76,7 +96,7 @@ D:\work\KabiPay\
 | Liquibase **ops** plane | schema `kabipay_ops` in `kabipay_dev` | ✅ applied (31 changesets) | See §2 |
 | Liquibase **tenant** plane — demo tenant | schema `tenant_342205fc` (derived from `-Code demo`) | ✅ applied (**~137** tenant changeSets after **0032**; re-run `update-tenant-liquibase.ps1` to match) | Provisioned via `kabipay-svc\scripts\provision-tenant.ps1 -Name 'Demo Co' -Code demo`. Seed data via `seed-demo-data.ps1`. |
 | `kabipay-auth` (REST) | `KABIPAY_AUTH_PORT` (default **4001** in `main.rs` if env unset) | ✅ | Client + ops **login / refresh / logout**, Argon2id, shared JWT, refresh in `user_session` / `operator_session`. Client access tokens include **`employee_id`** when the user is linked to `employee.user_id`. **UI:** `kabipay-ui/public/config.json` `authUrl` must match. |
-| 19 federated subgraphs | http://127.0.0.1:**4010-4028**/graphql | ✅ | Reads + **writes** where implemented (leave, attendance+timesheet, employee, expense, notification, tax, etc.). |
+| 20 federated subgraphs | http://127.0.0.1:**4010-4029**/graphql | ✅ | Reads + **writes** where implemented (incl. **analytics** read APIs on **4029**). |
 | Stitching gateway (`kabipay-gateway`) | http://127.0.0.1:4009/graphql | ✅ | Forwards **`Authorization`**, **`x-tenant-id`**, and (when present) **`x-forwarded-for`** / **`x-real-ip`** to subgraphs. |
 | UI (`kabipay-ui`) | http://localhost:5173 | 🟨 | **Auth** can call real `/auth/*`; many module screens use **live gateway queries**; buttons that need new mutations can be enabled as queries/codegen catch up. |
 
@@ -174,11 +194,11 @@ This uses `migrate-ops.cjs` and the bundled Liquibase JRE (under `vendor/` if `J
 
 | Item | Status | Path |
 |------|--------|------|
-| Root `Cargo.toml` (23 members: common + `kabipay-db-entities` + 21 binaries incl. **`kabipay-outbox-worker`**, pinned deps) | ✅ done | `Cargo.toml` |
+| Root `Cargo.toml` (24 members: `kabipay-common` + `kabipay-db-entities` + 20 GraphQL subgraphs + **`kabipay-auth`** + **`kabipay-analytics`** + **`kabipay-outbox-worker`**, pinned deps) | ✅ done | `Cargo.toml` |
 | Scaffold generator script (idempotent) | ✅ done | `scaffold-services.ps1` |
 | `cargo check --workspace` has been run at least once | ✅ done | — |
-| All 21 binaries built (`target/debug/kabipay-*.exe`, incl. outbox worker) | ✅ done | See §3 build note |
-| `scripts/start-subgraphs.ps1` to boot all 19 subgraphs | ✅ done | `scripts/start-subgraphs.ps1` |
+| All app binaries build (`target/debug/kabipay-*.exe`, incl. **analytics** + outbox worker) | ✅ done | See §3 build note |
+| `scripts/start-subgraphs.ps1` to boot all 20 GraphQL subgraphs | ✅ done | `scripts/start-subgraphs.ps1` (4010–4029) |
 
 **Build note (Windows):** `cargo build --workspace` OOMs on this machine (paging file too small, `os error 1455`). Workaround that works today:
 
@@ -221,7 +241,7 @@ All federated subgraphs now boot via `kabipay_common::subgraph::serve_subgraph(c
 
 This collapses ~70 lines of boilerplate per crate into one function call. `kabipay-employee` was the first to adopt it; every other subgraph followed.
 
-### Service crates — 1 REST auth service + 19 web GraphQL subgraphs
+### Service crates — 1 REST auth service + 20 web GraphQL subgraphs
 
 Legend: **`kabipay-auth`** = REST; others = GraphQL (queries + mutations where listed).
 
@@ -237,7 +257,7 @@ Legend: **`kabipay-auth`** = REST; others = GraphQL (queries + mutations where l
 | 4016 | `kabipay-payroll` | ✅ tenant | `salaryComponents`, `payrollCycles`, `payslip`, `payslips`; **`indiaTdsMonthlySummaryCsv`**, **`indiaPfEsiMonthlySummaryCsv`** (India statutory CSV stubs, RBAC-gated) |
 | 4017 | `kabipay-tax` | ✅ tenant | `taxConfigurations`, `taxSlabs`, `taxComputations`, **`taxProofLines`**; `upsertTaxComputation`, **`submitTaxProofLine`**, **`approveTaxProofLine`**, **`rejectTaxProofLine`** — **`totalDeductions`** recomputed from **APPROVED** proof lines only |
 | 4018 | `kabipay-benefits` | ✅ tenant | `benefitTypes`, `benefitPlans` |
-| 4019 | `kabipay-expense` | ✅ tenant | `expenseCategories`, `expenses`; `submitExpense`, `approveExpense`, `rejectExpense` |
+| 4019 | `kabipay-expense` | ✅ tenant | `expenseCategories`, `expenses`; `submitExpense`, `approveExpense`, `rejectExpense`; **M32** **`EXPENSE`** **`workflow_instance`** on submit + step advance on approve |
 | 4020 | `kabipay-recruitment` | ✅ tenant | `jobPostings`, `applications` |
 | 4021 | `kabipay-performance` | ✅ tenant | `reviewCycles`, `goals` |
 | 4022 | `kabipay-lms` | ✅ tenant | `skills`, `courses` |
@@ -245,8 +265,9 @@ Legend: **`kabipay-auth`** = REST; others = GraphQL (queries + mutations where l
 | 4024 | `kabipay-compensation` | ✅ tenant | `salaryBands`, `compensationReviewCycles` |
 | 4025 | `kabipay-assets` | ✅ tenant | `assetCategories`, `assets` |
 | 4026 | `kabipay-grievance` | ✅ tenant | `grievanceCategories`, `grievanceCases` |
-| 4027 | `kabipay-workflow` | ✅ tenant | `workflows`, `workflowInstances` |
+| 4027 | `kabipay-workflow` | ✅ tenant | `workflows`, `workflowInstances`, **`workflowsWithSteps`** / **`workflowSteps`** reads; **`createWorkflow`**, **`createWorkflowStep`** (**M31**) |
 | 4028 | `kabipay-notification` | ✅ tenant | `announcements`, `notifications`; mutations **`markNotificationRead`**, **`markAllNotificationsRead`** |
+| 4029 | `kabipay-analytics` | ✅ tenant | **`reportDefinitions`**, **`reportSchedules`**, **`dashboards`**, **`dashboardWidgets`**, **`workforceSnapshots`**; **`outboxEvents`** (HR / directory RBAC) |
 
 **Each subgraph contains:** `Cargo.toml`, `src/main.rs` (one call to `serve_subgraph`), `resolvers` (`QueryRoot` + `MutationRoot` when writes exist), `types`, and `services` (SeaORM; tenant + soft-delete filters).
 
@@ -266,7 +287,7 @@ Legend: **`kabipay-auth`** = REST; others = GraphQL (queries + mutations where l
 |------|--------|-------|
 | `package.json` — `graphql`, `graphql-yoga`, `@graphql-tools/{stitch,executor-http,utils,wrap}` | ✅ done | `npm install` succeeds without downloading any external binaries. |
 | `tsconfig.json` (`moduleResolution: Bundler`, ES2022) | ✅ done | |
-| `src/subgraphs.ts` — canonical list of all 19 subgraph ports + plane | ✅ done | |
+| `src/subgraphs.ts` — canonical list of all 20 subgraph ports + plane | ✅ done | |
 | `src/server.ts` — introspect every subgraph, stitch, serve `/graphql` on port 4009 | ✅ done | Skips unreachable subgraphs with a warning so partial fleets still work in dev. |
 | **`Authorization` +** tenant header forwarding through every stitched executor | ✅ done | Forwards `authorization` and `x-tenant-id` (see `server.ts`). |
 | `npm run dev` / `npm run start` (tsx) | ✅ done | `VITE`/`.env.example` updated with `KABIPAY_GATEWAY_PORT=4009`. |
@@ -299,7 +320,7 @@ The app is present at `D:\work\KabiPay\kabipay-ui\`. If you still keep a separat
 | Business screens | ✅ many routes use **live GraphQL**; some areas still use mocks or admin-only depth |
 | `graphql` + `graphql-request` | ✅ done |
 | `@graphql-codegen/cli` + `client-preset` | ✅ done |
-| `codegen.ts` — `documents: src/**/*.graphql` + `src/**/*.{ts,tsx}` | ✅ done (run `npm run codegen` after the gateway is up) |
+| `codegen.ts` + `src/api/schema-extensions/*.graphql` | ✅ done | Merged with gateway for codegen; **avoid** re-declaring input types the gateway already defines (see **§0.1**). Run `npm run codegen` after the gateway is up. |
 | `src/api/client.ts` — plane + optional `tenantId` → auto-forwards `Authorization` + `x-tenant-id` headers | ✅ done |
 | `src/hooks/useGraphClient.ts` — reads current tenant from `TenantContext`, memoises a tenant-aware client | ✅ done |
 | `src/auth/tokenStore.ts` (access + refresh, localStorage for refresh) | ✅ done |
@@ -414,7 +435,7 @@ Smoke test: run `npm run dev` in `kabipay-gateway/` + `kabipay-ui/`, then open `
 
 - **`kabipay-leave`** / **`leave_service::approve_leave_request`:** after updating **`leave_request`** + **`leave_balance`**, inserts one **`outbox_event`** row **before** `COMMIT` (atomic with the approval).
 - **Event:** `aggregate_type = leave_request`, `aggregate_id = leave_request.id`, `event_type = leave_request.approved`, `payload` = JSON (`schema_version`, employee, approver, type, dates, `days_requested`, status).
-- **Consumer (M7, 2026-04-24):** binary **`kabipay-outbox-worker`** — lists **`kabipay_ops.tenant_database`** (`is_active`), resolves each tenant DB, claims **`PENDING`** rows with **`FOR UPDATE SKIP LOCKED`**, sets interim **`PROCESSING`**, delivers (**`tracing`** + optional **`OUTBOX_WEBHOOK_URL`** POST), then **`PROCESSED`** + **`processed_at`** or requeue / **`FAILED`** with **`retry_count`** / **`last_error`** (cap **`OUTBOX_MAX_RETRIES`**). Run: `cargo run -p kabipay-outbox-worker` (same Postgres env as subgraphs). Poll interval **`OUTBOX_POLL_MS`** (default 2000). **Note:** rows left **`PROCESSING`** if the process dies mid-flight; reclaim not automated yet.
+- **Consumer (M7, 2026-04-24):** binary **`kabipay-outbox-worker`** — lists **`kabipay_ops.tenant_database`** (`is_active`), resolves each tenant DB, claims **`PENDING`** rows with **`FOR UPDATE SKIP LOCKED`**, sets interim **`PROCESSING`** + **`claimed_at`** (**`0034`**), delivers (**`tracing`** + optional **`OUTBOX_WEBHOOK_URL`** POST), then **`PROCESSED`** + **`processed_at`** or requeue / **`FAILED`** with **`retry_count`** / **`last_error`** (cap **`OUTBOX_MAX_RETRIES`**). Run: `cargo run -p kabipay-outbox-worker` (same Postgres env as subgraphs). Poll interval **`OUTBOX_POLL_MS`** (default 2000). **M26 (2026-04-28):** per-tenant sweep **reclaims** stale **`PROCESSING`** ( **`OUTBOX_STALE_PROCESSING_SEC`** / **`OUTBOX_LEGACY_PROCESSING_MAX_AGE_SEC`** ). HR: **`requeueOutboxEvent`** in **`kabipay-analytics`**, Insights **Requeue** for FAILED/PROCESSING.
 
 ### 7.13 Workflow + leave (M8, Gap D, 2026-04-24) ✅
 
@@ -423,7 +444,7 @@ Smoke test: run `npm run dev` in `kabipay-gateway/` + `kabipay-ui/`, then open `
 - **`approveLeaveRequest`:** appends **`workflow_action`** (**`APPROVE`**) for the current step; if a higher **`sequence_order`** step exists, advances **`current_step_id`** only (request stays **`PENDING`**; no balance/outbox change). On the last step, sets instance **`COMPLETED`**, then applies **`APPROVED`** + balance + **`outbox_event`** (**M6**).
 - **`rejectLeaveRequest`:** when instance **`IN_PROGRESS`**, records **`workflow_action`** (**`REJECT`**, remarks = reason) and sets instance **`CANCELLED`**, then existing reject + balance release.
 - **GraphQL:** **`LeaveRequest.workflowInstanceId`** (optional **ID**).
-- **`kabipay-workflow`** subgraph: still **read-only** (lists definitions/instances); runtime mutations live in **`kabipay-leave`** for this slice.
+- **`kabipay-workflow`** subgraph (**M31**): **`createWorkflow`**, **`createWorkflowStep`** for **definition** admin (JWT **`workflow:manage`** or HR / tenant admin). **Leave** approval **runtime** mutations remain in **`kabipay-leave`**; list/read **`workflows`** + instances unchanged.
 
 ### 7.14 Federation — `Employee` `@key` (M9, 2026-04-24) ✅
 
@@ -498,7 +519,7 @@ Smoke test: run `npm run dev` in `kabipay-gateway/` + `kabipay-ui/`, then open `
 |------|--------------------------------------|--------------|--------------------|
 | **Time & attendance** | 8 capture modes: biometric, remote clock-in, **geo** (continuous / fence), **IP** limits, face/selfie, timesheets; 200+ device drivers; shift board, OT → payroll | Punches, shifts schema, **GPS coords on punch** (WGS84), **tenant geofence + IP allowlist** for live punch (M11), timesheet table, regularization table (API partial) | Multi-site fences, **device integrations** (proprietary hardware), **continuous** tracking, photo/selfie proof, **shift calendar UI** |
 | **Leave** | Policy engine, accrual, carry-over, WFH, comp-off, **multi-step workflow approvals**, org/location-based rules, email/mobile alerts | `leave` schema + **submit/approve/reject** (direct status, not workflow engine), balances, in-app notification on approve/reject | **Policy designer**, **workflow engine** on `leave_request`, push/email, comp-off accrual |
-| **Payroll** | Full India statutory narrative; bank disbursement, compliance as product | Cycles, payslips, tax DTOs, components; **M4/M12** India **TDS** + **PF/ESI** monthly **CSV** stubs (not filed returns) | **Form 16**, **24Q**, filed challan formats, **pay runs** with arrear/revision, **bank transfer file** |
+| **Payroll** | Full India statutory narrative; bank disbursement, compliance as product | Cycles, payslips, tax DTOs, components; **M4/M12** **CSV** stubs; **M29** pay run v1, **arrears**, bank **CSV** export (stubs) | **Form 16**, **24Q**, filed challan formats, **NACH**/production bank **uploads**, full statutory “production” calcs |
 | **Core HR** | Org chart, letters, checklists, **onboarding/exit** journeys, asset handoff | Employee CRUD + **reporting manager**; **M13** org chart UI | **Lifecycle workflows**, offboarding, document packs |
 | **Hiring** | ATS depth (pipeline, offer, e-sign) | Light recruitment read APIs | **Full ATS**, interview scheduling, offer letters |
 | **Expenses** | Per diem, **travel requests**, mileage, card feeds | `submitExpense` + **`approveExpense` / `rejectExpense`**, **Travel** category + UI | **Trip entity**, mileage rates, per-diem rules, **multi-level workflow** |
@@ -514,8 +535,8 @@ The five roadmap bullets under §10 are **parity targets** aligned with [Keka](h
 
 | §10 roadmap item | Delivered so far (monorepo) | Still missing for Keka-row parity |
 |------------------|-----------------------------|-----------------------------------|
-| **(1) Approval workflows** (leave + expense + travel) | **M2:** single-step **`approveLeaveRequest` / `rejectLeaveRequest`** and **`approveExpense` / `rejectExpense`** + in-app **`notification`**; **M6:** **`outbox_event`** only on **leave approve**. **Travel:** **`submitExpense`** with Travel **category** — no **`trip` / travel_request** entity; **`workflow_instance` does not drive** leave/expense status (see §0.1 Approvals). | Multi-step rules, **`kabipay-workflow`** driving approvable rows, **expense/leave/outbox** publishers for all transitions, **travel** as first-class entity + policy |
-| **(2) Payroll statutory outputs** | **M4:** **`indiaTdsMonthlySummaryCsv`**; **M12:** **`indiaPfEsiMonthlySummaryCsv`**; payslips/tax UI reads. | **Form 16**, **24Q**, filed PF/ESI **ECR**/challan layouts, **bank transfer file**, **pay run** engine with arrear/revision |
+| **(1) Approval workflows** (leave + expense + travel) | **M8** leave; **M32** **`EXPENSE`** workflows in **`kabipay-expense`** (multi-step); **M14** **`travel_request`** approve path (**single-step**). **M6** outbox on **leave** final approve only. **`kabipay-workflow`** = definitions/read + admin **create**. | **Expense** outbox / travel multi-step runtime, full **policy** engine |
+| **(2) Payroll statutory outputs** | **M4/M12** CSV **stubs**; **M29:** **`runPayrollForCycle`**, arrear + **`payrollBankTransferCsv`** (wire format may need tenant templates). | **Form 16**, **24Q**, filed PF/ESI **ECR**/challan layouts, **NACH** / bank **upload** variants beyond current CSV, full production statutory calcs |
 | **(3) Attendance geofence + IP** | **M11:** tenant **`attendance_punch_policy`** + server-side **`punchToday`** checks; **GPS** on punch (§7.10); gateway forwards client IP headers. | **HR admin UI** for policy (optional polish), multi-site fences, shift **calendar UI**, device/CSV import |
 | **(4) Org chart + employee lifecycle** | **M1** **`departments` / `designations`**; **M13** **`orgChart`** + UI + **reporting manager** on admin employee forms; ERD **onboarding** tables exist. | **Onboarding/offboarding** checklists + UI, letters/document packs |
 | **(5) Device bridge / CSV import** | None productised. | Vendor **device** connector or **documented CSV** import for attendance/payroll |
@@ -535,7 +556,7 @@ The five roadmap bullets under §10 are **parity targets** aligned with [Keka](h
 | 10–12 | Time, leave, payroll | ✅ | ✅ attendance, leave, payroll | Punches+timesheet+leave+pay reads/writes; **M11** punch policy (geofence/IP) | D 🟨 |
 | 13–16 | Tax, benefits, expense, recruitment | ✅ | ✅ per crate | Some mutations; no full ATS/expense policy | D 🟨 |
 | 17–25 | Onboarding, PM, LMS, succession, comp, assets, grievance, analytics, workflow | ✅ | ✅ mostly **reads** + stubs | **Workflow** drives **leave** approvals when defined (**M8**); expense / other entities not wired | D 🟨 G 🟨 |
-| 26–30 | Integrations, comms, master data, file storage, outbox | ✅ | light | **LOCAL `file_storage` + HMAC read URL (M5)**; **`outbox_event`** on leave approve (M6) + **`kabipay-outbox-worker`** (M7) | F 🟨 (S3) G 🟨 (more publishers; stuck **`PROCESSING`** reclaim) |
+| 26–30 | Integrations, comms, master data, file storage, outbox | ✅ | light | **LOCAL** + optional **`s3_compat`** (R2/AWS/MinIO) **`file_storage` + HMAC read URL (M5 + M28)**; **`outbox_event`** on leave approve (M6) + **`kabipay-outbox-worker`** (M7) | F ✅ (S3) G 🟨 (more publishers) |
 
 **Interpretation:** the **data model and subgraph shells** are largely in place; **“remaining work”** is product depth: **workflow-backed approvals** (Gap D), **more outbox publishers** + optional reclaim (G), **file_storage** depth (F), **PERMISSION_SCOPE** depth on remaining mutations/lists (H — **M3** + **M10** cover major read lists), **India payroll** follow-ons beyond **M4**/**M12** CSV stubs, **client UI** for DB-heavy domains (**§13**), and **Keka-style** device + mobile UX (see §10).
 
@@ -558,25 +579,25 @@ The five roadmap bullets under §10 are **parity targets** aligned with [Keka](h
 | 9 | Custom fields (EAV) | ✅ | ⬜ | ⬜ | Not exposed |
 | 10 | Time, shift & roster | ✅ | ✅ punch/timesheet/manual; **M11** punch policy API | 🟨 | **HR UI** for **`attendancePunchPolicy`**, shift/roster **calendar** UI |
 | 11 | Leave | ✅ | ✅ submit/approve | ✅ | **Workflow** engine, policies |
-| 12 | Payroll | ✅ | 🟨 payslips/cycles; **M4**/**M12** India CSV stubs | 🟨 | Pay run engine, bank file, Form 16 / 24Q |
+| 12 | Payroll | ✅ | **M29** pay run v1 + arrears + **M4**/**M12** CSV stubs; bank CSV query | 🟨 | Production filing formats, NACH/bank **upload** templates, Form 16 / 24Q |
 | 13 | Tax & statutory | ✅ | ✅ proofs/computations | 🟨 | Filed statutory artefacts |
 | 14 | Benefits | ✅ | read-heavy | ⬜ | Enrollment flows |
 | 15 | Expense | ✅ | ✅ submit/approve | ✅ | **Trip**, mileage, multi-level |
 | 16 | Recruitment (ATS) | ✅ | read-heavy | ⬜ | Pipeline, offers |
-| 17 | Onboarding / offboarding | ✅ | ⬜ | ⬜ | Journeys |
+| 17 | Onboarding / offboarding | ✅ | ✅ checklist + **separation** + **HR approve/reject** + **FNF** + **clearance** | ✅ | **M24**–**M25**; payroll pay-run still N/A at FNF |
 | 18 | Performance | ✅ | read-heavy | ⬜ | 360, calibrations |
 | 19 | LMS | ✅ | read-heavy | ⬜ | |
-| 20 | Succession | ✅ | read-heavy | ⬜ | |
-| 21 | Compensation | ✅ | read-heavy | ⬜ | |
+| 20 | Succession | ✅ | read-heavy | ✅ | **M23** |
+| 21 | Compensation | ✅ | read-heavy | ✅ | **M23** |
 | 22 | Assets | ✅ | read-heavy | ⬜ | Handoff at exit |
 | 23 | Grievance | ✅ | read-heavy | ⬜ | |
-| 24 | Analytics / reporting | ✅ | ⬜ | ⬜ | |
-| 25 | Workflow engine | ✅ | 🟨 **M8** leave runtime in **`kabipay-leave`** | ⬜ | **D:** expense + **`kabipay-workflow`** mutations; step approver rules |
+| 24 | Analytics / reporting | ✅ | ✅ + outbox (HR) | ✅ | **M24** |
+| 25 | Workflow engine | ✅ | **M8** leave; **M32** expense (**`kabipay-expense`**); **M29** read; **M31** definition **write** (**`kabipay-workflow`**) | 🟨 | **Workplace → Workflows** + **Admin** + **Expenses** ✅. **D:** visual **designer**. |
 | 26 | Integrations & webhooks | ✅ | ⬜ | ⬜ | |
 | 27 | Communication & platform | ✅ | 🟨 notifications | 🟨 | Push/email |
 | 28 | Audit & security | ✅ | ⬜ | ⬜ | |
-| 29 | Master data + file storage | ✅ | ✅ **M5** LOCAL | 🟨 | **S3** provider |
-| 30 | Outbox events | ✅ | 🟨 **M6** publisher | 🟨 **M7** worker | **G:** more publishers + stuck-**`PROCESSING`** reclaim (optional) |
+| 29 | Master data + file storage | ✅ | ✅ **M5** + **M28** LOCAL or **`s3_compat`** | 🟨 | Deeper: lifecycle / retention policies |
+| 30 | Outbox events | ✅ | **M6** + **M7** + **M26** (reclaim / HR requeue) | **M7** worker | **G:** more publishers (non–leave) |
 
 ---
 
@@ -587,10 +608,10 @@ Work through this list **in order** unless a security incident reprioritises. Af
 | # | Module / theme | Status | Deliverable (concrete) |
 |---|----------------|--------|-------------------------|
 | **M1** | **Org hierarchy reads** | ✅ **done** (2026-04-24) | GraphQL `departments` + `designations` on `kabipay-employee`; `clientOperations.graphql`; admin employee UI uses selects + resolved labels. |
-| **M2** | **Approval workflow (first vertical)** | ✅ **leave + expense** (2026-04-24) | **Leave** / **expense:** approve/reject + notifications. **Leave (M8):** **`workflow_instance`** driven from **`kabipay-leave`** ( **`kabipay-workflow`** subgraph still read-only / no mutations). **Attendance:** `addManualAttendanceSegment`. **Further:** expense + **`workflow_instance`**, step-level approver rules — deferred. |
+| **M2** | **Approval workflow (first vertical)** | ✅ **leave + expense** (2026-04-24; **M32** expense WF) | **Leave (M8)** + **expense (M32):** **`workflow_instance`** runtime in **`kabipay-leave`** / **`kabipay-expense`**. **M31:** **`kabipay-workflow`** **definition** **`create*`** only. **Attendance:** `addManualAttendanceSegment`. **Further:** step-level approvers, **outbox** on final **expense** approve — deferred. |
 | **M3** | **PERMISSION_SCOPE (Gap H)** | ✅ **done** (2026-04-24) | **Liquibase `0005-007-permission-scope`**, **`load_client_resource_scopes`**, JWT **`resource_scopes`**. **`employees`**, **`employee(id)`** (IDOR), **`leaveRequests`**: SELF/TEAM/DEPARTMENT/ALL; no JWT → all (dev). **M10** extends lists (below). Demo seed: HR **ALL** for **`employee`**, **`leave`**, **`expense`**, **`attendance`**. |
 | **M4** | **Payroll statutory (India)** | ✅ **CSV stub** (2026-04-24) | GraphQL **`indiaTdsMonthlySummaryCsv(month, year)`** on **`kabipay-payroll`**: tenant-wide payslips for matching **`payroll_cycle`** + **`employee`** + primary **`employee_pan`**; **`payroll:statutory_export`** (or HR / tenant admin). UI: **Payroll** page → download. Demo seed: sample payslip + PAN. Not Form 24Q / filed output. |
-| **M5** | **File storage + signed URLs (Gap F)** | ✅ **done** (2026-04-24) | **`uploadEmployeeDocument`** (base64) → `file_storage` + `employee_document` on disk under **`KABIPAY_LOCAL_FILE_ROOT`**; **`employeeDocumentSignedReadUrl`**; **`GET /files/employee-document?token=`** (HMAC, `KABIPAY_JWT_SECRET`). **`tenant_graphql_post`** exported from **`kabipay-common`**. Re-run `npm run codegen` for new operations. |
+| **M5** | **File storage + signed URLs (Gap F)** | ✅ **done** (2026-04-24); **M28** extends | **`uploadEmployeeDocument`** (base64) → `file_storage` + `employee_document` **LOCAL** under **`KABIPAY_LOCAL_FILE_ROOT`**; **`read_stored_file_bytes`** for GET. **M28:** optional **S3-compatible** backend (**R2**/**AWS**/**MinIO**), per-tenant bucket or shared bucket; **`kabipay-svc/.env.example`**. **`employeeDocumentSignedReadUrl`**; **`GET /files/employee-document?token=`** (HMAC). |
 | **M6** | **Outbox event (Gap G)** | ✅ **leave approve** (2026-04-24) | **`approveLeaveRequest`**: in the **same DB transaction**, insert **`outbox_event`** (`aggregate_type` **`leave_request`**, **`event_type`** **`leave_request.approved`**, `status` **`PENDING`**, JSON payload with ids + dates + `days_requested`). Requires tenant schema **`0030`** (`outbox_event` table). |
 | **M7** | **Outbox consumer (Gap G)** | ✅ **worker** (2026-04-24) | **`kabipay-outbox-worker`**: active tenants from **`tenant_database`**, claim **`PENDING`** via **`FOR UPDATE SKIP LOCKED`**, **`PROCESSING`** → deliver (log + optional **`OUTBOX_WEBHOOK_URL`**) → **`PROCESSED`** / retry / **`FAILED`**. Env: **`OUTBOX_POLL_MS`**, **`OUTBOX_MAX_RETRIES`**, **`OUTBOX_WEBHOOK_URL`**; DB vars same as subgraphs (**`DATABASE_URL`** or **`POSTGRES_*`**). Runbook: **§7.12**. |
 | **M8** | **Workflow-driven approval (Gap D)** | ✅ **leave** (2026-04-24) | **`kabipay-leave`**: **`submitLeaveRequest`** creates **`workflow_instance`** (`IN_PROGRESS`, `current_step_id` = first step) when **`workflow`** (`LEAVE_REQUEST`, active) + **`workflow_step`** exist; sets **`leave_request.workflow_instance_id`**. **`approveLeaveRequest`**: **`workflow_action` APPROVE**, next step or **`COMPLETED`** + **`finalize_leave_approval`** (balance + **M6** outbox). **`rejectLeaveRequest`**: **`workflow_action` REJECT** + **`CANCELLED`**. No **`workflow_step`** → legacy single-step approve (same as pre-M8). Demo seed: **`workflow_step`** + **`leave_request.workflow_instance_id`**. |
@@ -608,8 +629,19 @@ Work through this list **in order** unless a security incident reprioritises. Af
 | **M20** | **Client UI — LMS** | ✅ **read v1** (2026-04-24) | **Workplace → Learning**: **`skills`** + **`courses`**. |
 | **M21** | **Client UI — assets** | ✅ **read v1** (2026-04-24) | **Workplace → Assets**: **`assetCategories`** + **`assets`**; assign/return deferred. |
 | **M22** | **Client UI — grievance** | ✅ **done** (2026-04-24) | **`submitGrievanceCase`** + scoped **`grievanceCases`** (self vs HR-all); **Workplace → Grievance** UI. |
+| **M23** | **Client UI — succession + compensation** | ✅ **read v1** (2026-04-27) | **Workplace → Succession** (`competencies`, `talentPools`); **Workplace → Compensation** (`compensationReviewCycles`, `salaryBands` with designation titles from `designations`). Mutations / calibration flows deferred. |
+| **M24** | **Analytics + outbox + offboarding v1** | ✅ **read + submit** (2026-04-27) | New **`kabipay-analytics`** (port **4029**): reports, dashboards, workforce snapshots, **`outboxEvents`** (HR). **Employee:** **`separations`**, **`submitSeparation`**. **UI:** **`/insights`**, **Onboarding & exit** tabs, **Workplace → Workflows** (route shell). **M29** adds **`workflowsWithSteps`**-aware **step list** + **codegen**-safe queries. **download** HMAC includes **`mime_type`**. |
+| **M24.1** | **Separation HR approve / reject** | ✅ **done** (2026-04-28) | **`approveSeparation`**, **`rejectSeparation`** (`PENDING` only); **Onboarding** exit list: **Approve** / **Reject** for **`admin`** UI role. |
+| **M25** | **FNF + clearance (0017)** | ✅ **done** (2026-04-28) | Transactional DRAFT FNF + default clearance on **approval**; GraphQL + **Onboarding** **Clearance & FNF** panel; **§0.2** FNF row. |
+| **M26** | **Outbox hardening (0030 + W)** | ✅ **done** (2026-04-28) | **`0034` `claimed_at`**, worker reclaim, **`requeueOutboxEvent`**, Insights table + **Requeue**; **§0.2** outbox row. |
+| **M27** | **FNF GraphQL codegen + download DRY** | ✅ **done** (2026-04-28) | **`ClientOps*`** FNF/clearance + **`RequeueOutbox`** in **`clientOperations.graphql`**, **Onboarding** + **Insights** on generated **Documents**; **`read_stored_file_bytes`** in **employee** (LOCAL). **Requeue** requires **gateway** + **kabipay-analytics** for introspection. |
+| **M28** | **S3 / R2 / MinIO `object_store` (M5 extension)** | ✅ **done** (2026-04-28) | **`object_store`**: **`S3CompatSettings`** from env; **OpenDAL** S3 + **reqsign** **CreateBucket**; **`KABIPAY_S3_PER_TENANT_BUCKET`**; smoke tests in **`s3_tenant`**. **Gaps F** closed for S3; **Azure** TBD. |
+| **M29** | **Payroll v1 + arrears + workflow reads + UI/codegen hardening** | ✅ **done** (2026-04-28) | **`runPayrollForCycle`**, arrear **0035** + **`createPayrollArrear`**, **`payrollBankTransferCsv`**; **Workflow** **`workflowsWithSteps`** + **UI** (split queries for gateway compatibility). **Tenant 0036** travel link on expense. **UI:** `clientOperations` split ops; **schema merge** for codegen (no duplicate **`CreatePayrollCycleInput`**). *Not in scope for M29:* production statutory filings, NACH file formats, workflow **designer**. |
+| **M30** | **Expense ↔ travel (UI + GraphQL operations)** | ✅ **done** (2026-04-28) | **`clientOperations.graphql`**: **`travelRequestId`** on **`expenses`** in **`ExpenseBoard`**; submit sends optional **`travelRequestId`**. **Expenses** table **Trip** column + “Link to travel request” on submit modal. Prereq: deployed **expense** subgraph with **`expense.travel_request_id`**. |
+| **M31** | **Workflow definition write (subgraph + Admin UI)** | ✅ **done** (2026-04-27) | **`kabipay-common`**: **`PERM_WORKFLOW_MANAGE`**; **`kabipay-workflow`**: **`createWorkflow`**, **`createWorkflowStep`** (duplicate step order rejected). **UI:** **Admin → Workflows** — create workflow + add step; **`AdminCreateWorkflow`**, **`AdminCreateWorkflowStep`** in **`clientOperations.graphql`**. **Codegen:** local **`workflow-admin`** extension **removed** once **gateway** + **`kabipay-workflow`** expose mutations (current setup). |
+| **M32** | **Expense `workflow_instance` (runtime)** | ✅ **done** (2026-04-27) | **`kabipay-expense`** + seed + **`Expenses`** UI; **codegen:** **`backlog-catchup`** no longer stubs **`Expense`** / **`SubmitExpenseInput`** (**gateway** subgraph is authoritative). |
 
-**Rules:** one **M#** per development session where possible; **M7–M22** may be reprioritised after security review. Update **§11.1** when a domain’s **UI e2e** or **API** column materially changes. **§13** is the cross-check against **`hrms_erd_complete.md`** so “DB exists but no UI” is explicit.
+**Rules:** one **M#** per development session where possible; **M7–M24.1** may be reprioritised after security review. Update **§11.1** when a domain’s **UI e2e** or **API** column materially changes. **§13** is the cross-check against **`hrms_erd_complete.md`** so “DB exists but no UI” is explicit.
 
 ---
 
@@ -627,26 +659,26 @@ Work through this list **in order** unless a security incident reprioritises. Af
 | 6–7 | Org + employee | ✅ | ✅ | ✅ | **M13** chart + manager + onboarding checklist API/UI. |
 | 8–9 | Documents + custom fields | ✅ | 🟨 **M5** upload | 🟨 | **EAV** not exposed — future “custom fields admin” task. |
 | 10 | Time, shift, roster | ✅ | ✅ + **M11** | ✅ | **M15** HR policy UI + shift list (read-only in client). |
-| 11–12 | Leave, payroll | ✅ | ✅ | 🟨 | Leave ✅; payroll UI 🟨 vs **M4/M12** exports. |
+| 11–12 | Leave, payroll | ✅ | ✅; **M29** pay run + arrears | 🟨 | Leave ✅; payroll **M29** v1; filed statutory / NACH TBD. |
 | 13 | Tax & statutory | ✅ | ✅ | 🟨 | Tax proof flows; filed artefacts still out of scope. |
 | 14 | Benefits | ✅ | read-heavy | ✅ | **M16** catalog page; enroll mutation deferred. |
-| 15 | Expense | ✅ | ✅ + **travel_request** | ✅ | **M14** `travel_request` + approve path. |
+| 15 | Expense | ✅ | ✅ + **travel_request**; **M32** **`workflow_instance`** | ✅ | **M30** trip link; **M32** multi-step approval. |
 | 16 | Recruitment | ✅ | read-heavy | ✅ | **M17** jobs + applications table. |
 | 17 | Onboarding / offboarding | ✅ | ✅ checklist | ✅ | **M18**; separation/FNF still API-light. |
 | 18 | Performance | ✅ | read-heavy | ✅ | **M19** cycles + goals list. |
 | 19 | LMS | ✅ | read-heavy | ✅ | **M20** skills + courses catalog. |
-| 20 | Succession | ✅ | read-heavy | ⬜ | After **M19**–**M20** or parallel if API ready. |
-| 21 | Compensation | ✅ | read-heavy | ⬜ | HR compensation reviews — no dedicated UI. |
+| 20 | Succession | ✅ | read-heavy | ✅ | **M23** catalog + talent pools. |
+| 21 | Compensation | ✅ | read-heavy | ✅ | **M23** review cycles + salary bands (read v1). |
 | 22 | Assets | ✅ | read-heavy | ✅ | **M21** inventory read v1. |
 | 23 | Grievance | ✅ | ✅ read + submit | ✅ | **M22** scoped list + **`submitGrievanceCase`**. |
-| 24 | Analytics | ✅ | ⬜ | ⬜ | Reporting dashboards — API+UI greenfield. |
-| 25 | Workflow | ✅ | 🟨 **M8** leave | ⬜ | Designer UI; expense/expense workflow runtime. |
+| 24 | Analytics | ✅ | ✅ `kabipay-analytics` | ✅ | **M24** Insights + outbox queue tab |
+| 25 | Workflow | ✅ | **M8** leave; **M32** expense runtime; **M29** read; **M31** definition mutations | 🟨 | **Workflows** + **Admin** + **Expense** claims ✅; drag-and-drop ⬜. |
 | 26 | Integrations | ✅ | ⬜ | ⬜ | Webhook registry UI + mutations. |
 | 27 | Communication | ✅ | 🟨 notifications | 🟨 | Push/email providers. |
 | 28 | Audit & security | ✅ | ⬜ | ⬜ | Audit log viewer (ops or tenant admin). |
 | 29 | Master data + files | ✅ | 🟨 **M5** | 🟨 | **S3** provider; master data CRUD UI. |
-| 30 | Outbox | ✅ | 🟨 **M6/M7** | ⬜ | Ops visibility for **`outbox_event`** queue (optional). |
+| 30 | Outbox | ✅ | **M6/M7** + **M26** | 🟨 Insights outbox + **Requeue** | **HR** queue inspection; more publishers TBD. |
 
-**How to use:** After **§12** **M13–M22** v1, pull the next **UI = ⬜** row (e.g. succession, analytics) unless security/product overrides.
+**How to use:** After **§12** **M13–M23** v1, pull the next **UI = ⬜** row (e.g. **analytics**, **workflow** designer, **integrations**) unless security/product overrides.
 
 ---
