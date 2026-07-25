@@ -1,0 +1,16 @@
+Write-Host "Demo tenant logins (password ChangeMe!123):" -ForegroundColor Yellow
+Write-Host '  demo@kabipay.local          - HR_ADMIN + employee (full HR + self-service)'
+Write-Host '  tenant-admin@kabipay.local  - TENANT_ADMIN (admin shell + leave configuration)'
+Write-Host '  manager@kabipay.local       - LINE_MANAGER (approvals + analytics:read + attendance:punch_self)'
+Write-Host '  staff@kabipay.local  
+
+
+Remaning Task:
+1. Invite user after createion
+2. Admin userName/Password reset
+3. Create email and OTP send flow for user creation and important notifications.
+4. Timesheet Approval flow not implemented - only for hr ned to add manager flow or someone from heirachy and then hr
+5. Attendece log is not working as expected - need extra validations like can not add new entry for same day user can add mutiple blocks but can add entry that overlap with existing block.
+6. 
+
+http://localhost:5173/login
