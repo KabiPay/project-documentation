@@ -1,0 +1,65 @@
+api.heliorsoft.com {
+    tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
+
+    encode gzip
+
+    handle /graphql* {
+        reverse_proxy kabipay-gateway:4009
+    }
+
+    handle /auth/* {
+        reverse_proxy kabipay-auth:4001
+    }
+
+    handle /healthz {
+        reverse_proxy kabipay-auth:4001
+    }
+
+    handle {
+        respond "KabiPay API" 200
+    }
+}
+
+heliorsoft.com, www.heliorsoft.com, *.heliorsoft.com {
+    tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
+
+    encode gzip
+
+    # Keep API routes available on tenant UI subdomains as a fallback.
+    # The primary browser config should still use https://api.heliorsoft.com.
+    handle /graphql* {
+        reverse_proxy kabipay-gateway:4009
+    }
+
+    handle /auth/* {
+        reverse_proxy kabipay-auth:4001
+    }
+
+    handle /healthz {
+        reverse_proxy kabipay-auth:4001
+    }
+
+    handle {
+        reverse_proxy kabipay-ui:80
+    }
+}
+
+:80 {
+    encode gzip
+
+    handle /graphql* {
+        reverse_proxy kabipay-gateway:4009
+    }
+
+    handle /auth/* {
+        reverse_proxy kabipay-auth:4001
+    }
+
+    handle /healthz {
+        reverse_proxy kabipay-auth:4001
+    }
+
+    handle {
+        reverse_proxy kabipay-ui:80
+    }
+}

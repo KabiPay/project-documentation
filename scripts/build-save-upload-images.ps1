@@ -11,6 +11,9 @@
     .\scripts\build-save-upload-images.ps1 -Tag helior-001 -VpsHost 159.198.70.19 -VpsUser deploy
 
 .EXAMPLE
+    .\scripts\build-save-upload-images.ps1 -Tag helior-001 -VpsHost 159.198.70.19 -VpsUser deploy -PublicBaseUrl https://heliorsoft.com -ApiBaseUrl https://api.heliorsoft.com -TenantId e6d4fc13-feb8-52a0-93bd-f66c795969b1 -DeployAfterUpload
+
+.EXAMPLE
     .\scripts\build-save-upload-images.ps1 -Tag helior-001 -VpsHost 159.198.70.19 -VpsUser deploy -SshPort 22 -RemoteDir /opt/apps/images
 
 .EXAMPLE
@@ -29,9 +32,25 @@ param(
 
     [int]$SshPort = 22,
 
+    [string]$SshIdentityFile,
+
     [string]$RemoteDir = '/opt/apps/images',
 
     [string]$OutputDir = 'dist-images',
+
+    [string]$PublicBaseUrl,
+
+    [string]$ApiBaseUrl,
+
+    [string]$TenantId,
+
+    [string]$CaddySiteAddress,
+
+    [switch]$DeployAfterUpload,
+
+    [switch]$WithWorker,
+
+    [switch]$SkipDeploymentValidation,
 
     [switch]$SkipUpload
 )
@@ -57,6 +76,7 @@ $UiTarName = "kabipay-ui-$Tag.tar"
 $SvcTar = Join-Path $OutDir $SvcTarName
 $GatewayTar = Join-Path $OutDir $GatewayTarName
 $UiTar = Join-Path $OutDir $UiTarName
+$DeployScript = Join-Path $PSScriptRoot 'deploy-on-vps.ps1'
 
 function Require-Command {
     param(
@@ -100,6 +120,36 @@ if (-not $SkipUpload) {
     if ([string]::IsNullOrWhiteSpace($VpsUser)) {
         throw "VpsUser is required unless -SkipUpload is set"
     }
+}
+
+if ($SkipUpload -and $DeployAfterUpload) {
+    throw "DeployAfterUpload cannot be used with SkipUpload"
+}
+
+if ($DeployAfterUpload) {
+    if ([string]::IsNullOrWhiteSpace($PublicBaseUrl)) {
+        throw "PublicBaseUrl is required when DeployAfterUpload is set"
+    }
+
+    if ([string]::IsNullOrWhiteSpace($TenantId)) {
+        throw "TenantId is required when DeployAfterUpload is set"
+    }
+
+    if (-not (Test-Path $DeployScript)) {
+        throw "Missing deploy script: $DeployScript"
+    }
+}
+
+$SshArgs = @('-p', $SshPort)
+$ScpArgs = @('-P', $SshPort)
+
+if (-not [string]::IsNullOrWhiteSpace($SshIdentityFile)) {
+    if (-not (Test-Path $SshIdentityFile)) {
+        throw "SSH identity file does not exist: $SshIdentityFile"
+    }
+
+    $SshArgs += @('-i', $SshIdentityFile)
+    $ScpArgs += @('-i', $SshIdentityFile)
 }
 
 if (-not (Test-Path (Join-Path $SvcDir 'Dockerfile'))) {
@@ -159,29 +209,53 @@ $RemoteArchiveDir = "$RemoteDir/archive/$DeploymentStamp"
 $RemotePrepareCommand = "set -eu; mkdir -p '$RemoteDir' '$RemoteDir/archive'; if ls '$RemoteDir'/kabipay-*.tar >/dev/null 2>&1; then mkdir -p '$RemoteArchiveDir'; mv '$RemoteDir'/kabipay-*.tar '$RemoteArchiveDir'/; fi"
 
 Run-Command "Preparing remote image directory and archive on $Remote" {
-    ssh -p $SshPort $Remote $RemotePrepareCommand
+    ssh @SshArgs $Remote $RemotePrepareCommand
 }
 
 Run-Command "Uploading image archives to ${Remote}:$RemoteDir" {
-    scp -P $SshPort $SvcTar $GatewayTar $UiTar "${Remote}:$RemoteDir/"
+    scp @ScpArgs $SvcTar $GatewayTar $UiTar "${Remote}:$RemoteDir/"
+}
+
+if ($DeployAfterUpload) {
+    $DeployArgs = @(
+        '-Tag', $Tag,
+        '-VpsHost', $VpsHost,
+        '-VpsUser', $VpsUser,
+        '-SshPort', $SshPort,
+        '-PublicBaseUrl', $PublicBaseUrl,
+        '-TenantId', $TenantId,
+        '-Deploy'
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($ApiBaseUrl)) {
+        $DeployArgs += @('-ApiBaseUrl', $ApiBaseUrl)
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($SshIdentityFile)) {
+        $DeployArgs += @('-SshIdentityFile', $SshIdentityFile)
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($CaddySiteAddress)) {
+        $DeployArgs += @('-CaddySiteAddress', $CaddySiteAddress)
+    }
+
+    if ($WithWorker) {
+        $DeployArgs += '-WithWorker'
+    }
+
+    if ($SkipDeploymentValidation) {
+        $DeployArgs += '-SkipValidation'
+    }
+
+    Run-Command "Deploying uploaded images on $Remote" {
+        & $DeployScript @DeployArgs
+    }
+
+    exit 0
 }
 
 Write-Host ""
 Write-Host "Done. Image archives uploaded successfully." -ForegroundColor Green
 Write-Host ""
-Write-Host "Next commands to run on VPS:" -ForegroundColor Yellow
-Write-Host "  ssh -p $SshPort $Remote"
-Write-Host "  cd $RemoteDir"
-Write-Host "  docker load -i $SvcTarName"
-Write-Host "  docker load -i $GatewayTarName"
-Write-Host "  docker load -i $UiTarName"
-Write-Host "  docker images | grep kabipay"
-Write-Host ""
-Write-Host "Then update /opt/apps/docker-compose.yml with:"
-Write-Host "  image: kabipay-svc:$Tag"
-Write-Host "  image: kabipay-gateway:$Tag"
-Write-Host "  image: kabipay-ui:$Tag"
-Write-Host ""
-Write-Host "Then run:"
-Write-Host "  cd /opt/apps"
-Write-Host "  docker compose up -d"
+Write-Host "Next deployment command:" -ForegroundColor Yellow
+Write-Host "  .\scripts\deploy-on-vps.ps1 -Tag $Tag -VpsHost $VpsHost -VpsUser $VpsUser -PublicBaseUrl https://heliorsoft.com -ApiBaseUrl https://api.heliorsoft.com -TenantId <tenant-id> -Deploy"

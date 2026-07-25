@@ -1,0 +1,171 @@
+services:
+  caddy:
+    image: caddy:alpine
+    container_name: caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./certs/cloudflare:/etc/caddy/certs:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - kabipay-ui
+      - kabipay-gateway
+      - kabipay-auth
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    env_file:
+      - .env
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  mongo:
+    image: mongo:4.4
+    container_name: mongo
+    env_file:
+      - .env
+    volumes:
+      - ./data/mongo:/data/db
+    ports:
+      - "127.0.0.1:27017:27017"
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  kabipay-auth:
+    image: kabipay-svc:${KABIPAY_IMAGE_TAG:-helior-001}
+    container_name: kabipay-auth
+    command: ["kabipay-auth"]
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "4001"
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  kabipay-subgraphs:
+    image: kabipay-svc:${KABIPAY_IMAGE_TAG:-helior-001}
+    container_name: kabipay-subgraphs
+    command:
+      - /bin/bash
+      - -lc
+      - |
+        set -e
+        trap 'kill 0' TERM INT
+        kabipay-ops &
+        kabipay-employee &
+        kabipay-leave &
+        kabipay-attendance &
+        kabipay-payroll &
+        kabipay-tax &
+        kabipay-benefits &
+        kabipay-expense &
+        kabipay-recruitment &
+        kabipay-performance &
+        kabipay-lms &
+        kabipay-succession &
+        kabipay-compensation &
+        kabipay-assets &
+        kabipay-grievance &
+        kabipay-workflow &
+        kabipay-notification &
+        kabipay-analytics &
+        wait -n
+        kill 0
+        wait
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "4010"
+      - "4013"
+      - "4014"
+      - "4015"
+      - "4016"
+      - "4017"
+      - "4018"
+      - "4019"
+      - "4020"
+      - "4021"
+      - "4022"
+      - "4023"
+      - "4024"
+      - "4025"
+      - "4026"
+      - "4027"
+      - "4028"
+      - "4029"
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  kabipay-gateway:
+    image: kabipay-gateway:${KABIPAY_IMAGE_TAG:-helior-001}
+    container_name: kabipay-gateway
+    environment:
+      KABIPAY_GATEWAY_PORT: ${KABIPAY_GATEWAY_PORT:-4009}
+      KABIPAY_SUBGRAPH_BASE_URL: ${KABIPAY_SUBGRAPH_BASE_URL:-http://kabipay-subgraphs}
+    depends_on:
+      - kabipay-subgraphs
+    expose:
+      - "4009"
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  kabipay-ui:
+    image: kabipay-ui:${KABIPAY_IMAGE_TAG:-helior-001}
+    container_name: kabipay-ui
+    volumes:
+      - ./config/ui-config.json:/usr/share/nginx/html/config.json:ro
+    expose:
+      - "80"
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  kabipay-outbox-worker:
+    image: kabipay-svc:${KABIPAY_IMAGE_TAG:-helior-001}
+    container_name: kabipay-outbox-worker
+    command: ["kabipay-outbox-worker"]
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - worker
+    restart: unless-stopped
+    networks:
+      - app-network
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  app-network:
+    driver: bridge

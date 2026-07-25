@@ -8,3 +8,4 @@ venv/
 pgConnect.json
 .env
 .env.*
+!deploy/.env.example
